@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AI FAQ Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body{font-family:Arial,sans-serif;background:#f4f7fb;margin:0;color:#222}
+        .container{max-width:900px;margin:30px auto;padding:20px}
+        h1{color:#2457d6}
+        .card{background:white;padding:20px;border-radius:12px;margin-bottom:18px;box-shadow:0 2px 10px #0001}
+        input,textarea,select,button{width:100%;box-sizing:border-box;padding:11px;margin-top:8px;margin-bottom:10px}
+        button{background:#2457d6;color:white;border:0;border-radius:7px;cursor:pointer}
+        .faq{border-top:1px solid #ddd;padding:12px 0}
+        .tag{font-size:12px;color:#2457d6}
+        .answer{background:#eef4ff;padding:12px;border-radius:8px}
+        .delete{background:#d33;width:auto;padding:7px 12px}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🤖 AI FAQ Assistant</h1>
+    <p>Ask a question or manage frequently asked questions.</p>
+
+    <div class="card">
+        <h2>Ask Assistant</h2>
+        <input id="question" placeholder="Example: What is DBMS?">
+        <button onclick="askQuestion()">Ask</button>
+        <div id="result"></div>
+    </div>
+
+    <div class="card">
+        <h2>Add FAQ</h2>
+        <input id="newQuestion" placeholder="Question">
+        <textarea id="newAnswer" placeholder="Answer"></textarea>
+        <input id="newCategory" placeholder="Category">
+        <button onclick="addFaq()">Add FAQ</button>
+    </div>
+
+    <div class="card">
+        <h2>FAQ List</h2>
+        <div id="faqList">Loading...</div>
+    </div>
+</div>
+
+<script>
+async function askQuestion(){
+    const question = document.getElementById("question").value;
+    const box = document.getElementById("result");
+    box.innerHTML = "Thinking...";
+    const res = await fetch("/api/ask", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({question})
+    });
+    const data = await res.json();
+    box.innerHTML = `<div class="answer"><b>${escapeHtml(data.answer)}</b><br><small>Source: ${escapeHtml(data.source)}</small></div>`;
+}
+
+async function loadFaqs(){
+    const res = await fetch("/api/faqs");
+    const faqs = await res.json();
+    document.getElementById("faqList").innerHTML = faqs.map(f =>
+        `<div class="faq">
+            <b>${escapeHtml(f.question)}</b>
+            <div>${escapeHtml(f.answer)}</div>
+            <span class="tag">${escapeHtml(f.category)}</span><br>
+            <button class="delete" onclick="deleteFaq(${f.id})">Delete</button>
+        </div>`
+    ).join("");
+}
+
+async function addFaq(){
+    const question = document.getElementById("newQuestion").value;
+    const answer = document.getElementById("newAnswer").value;
+    const category = document.getElementById("newCategory").value || "General";
+    await fetch("/api/faqs", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({question,answer,category})
+    });
+    document.getElementById("newQuestion").value="";
+    document.getElementById("newAnswer").value="";
+    document.getElementById("newCategory").value="";
+    loadFaqs();
+}
+
+async function deleteFaq(id){
+    await fetch(`/api/faqs/${id}`, {method:"DELETE"});
+    loadFaqs();
+}
+
+function escapeHtml(text){
+    return String(text).replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[m]));
+}
+loadFaqs();
+</script>
+</body>
+</html>
